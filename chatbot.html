@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <title>StrawHats</title>
+
+</head>
+
+<body>
+    <div class="background" id="background">
+        <div class="bar">
+            <img src="images/logo.png" alt="Starwhats" style="margin-left: 20px;margin-top: 10px;height: 70px;">
+            <div class="heading">
+                StrawHats
+            </div>
+            <div class="logout" id="logOut">
+                LogOut
+            </div>
+        </div>
+        <div class="reponse-container">
+            <div id="displayData" style="color: white;max-height: 80%;overflow-x: auto;overflow-y: auto;">
+
+            </div>
+            <div id="loading-overlay" style="display: none; margin-left: auto;margin-right: auto;margin-top: 10px;">
+                <div id="loading-spinner" class="loader"></div>
+                <div id="loading-message"
+                    style="color: white; font-size: 15px;text-align: center;align-items: center;justify-content: center;">
+                    Loading, please wait...</div>
+            </div>
+        </div>
+        <!-- <div>
+  <img src="" alt="" id="product-image">
+</div>
+<div id="productTable"></div> -->
+        <!-- <div>
+  <img  alt="" id="image-product">
+</div> -->
+        <form class="form-class" id="input-form">
+            <div class="custom-file-input">
+                <input type="file" id="file-input" accept="image/*" id="button-image">
+                <label for="file-input">
+                    <img src="images/camera_white 1.png" alt="Upload Image" id="uploaded-img">
+                </label>
+            </div>
+            <input type="text" class="input-type" value="What's on your mind.." id="input-prompt">
+            <input type="submit" value="Submit" id="submit-button">
+        </form>
+    </div>
+    <div class="extra-div">
+
+    </div>
+</body>
+<script>
+
+    let oldestTimestamp = Date.now();
+    let url = new URL(window.location.href);
+
+
+    // Parse the fragment to extract the access token and other parameters
+    const fragment = window.location.hash;
+    let accessToken;
+    // Check if the fragment contains 'access_token='
+    if (fragment.includes('access_token=')) {
+        // Split the fragment by '=' and get the second part
+        const parts = fragment.split('=');
+        accessToken = parts[1];
+
+        console.log(accessToken);
+    }
+
+    // Get the access_token parameter
+
+    function parseJwt(token) {
+        var base64Url = token.split('.')[1];
+        var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(jsonPayload);
+    }
+    let obj = parseJwt(accessToken);
+    console.log(obj);
+    let userid = obj.sub;
+    console.log(userid);
+
+    const display_div = document.getElementById("displayData");
+    async function write(Input, UserID, timestamp, output) {
+
+        const options = {
+            method: 'POST',
+            url: 'https://xekz5sqm4qgor4bewt3b4xopgy0cfecl.lambda-url.us-east-1.on.aws/',
+            headers: { 'content-type': 'application/json' },
+            data: { UserID: UserID, timestamp: timestamp, input: Input, output: output }
+        };
+
+        try {
+            const { data } = await axios.request(options);
+            console.log(data);
+            return data;
+        } catch (error) {
+            console.error(error);
+            return error;
+        }
+    }
+
+    async function update(UserID, timestamp, newOutputValue) {
+        const options = {
+            method: 'POST',
+            url: 'https://b5dawomjxcr6x3f4tr3lhwhn6m0vkwwq.lambda-url.us-east-1.on.aws/',
+            headers: { 'content-type': 'application/json' },
+            data: { UserID: UserID, timestamp: timestamp, newOutputValue: newOutputValue }
+        };
+
+        try {
+            const { data } = await axios.request(options);
+            console.log(data);
+            return data;
+        } catch (error) {
+            console.error(error);
+            return error;
+        }
+    }
+    var scrollYPos = 0;
+    let hasmore = true;
+    let asstMsg;
+    let isLoading = false;
+    let userMsg;
+
+    const read = async (timestampThreshold, userID) => {
+        const options = {
+            method: 'POST',
+            url: 'https://7jzhlv3glpnmq522etdghponw40mglkl.lambda-url.us-east-1.on.aws/',
+            headers: { 'content-type': 'application/json' },
+            data: { timestampThreshold, userID },
+        };
+
+
+        const { data } = await axios.request(options);
+        // console.log(data);
+        let json_arr = data.Items;
+        if (json_arr.length == 0) {
+            hasmore = false;
+        }
+
+        // chatContainer.style.display = 'flex';
+        // chatContainer.style.flexDirection = 'column-reverse';
+
+        for (let i = 0; i < json_arr.length; i++) {
+            let item = json_arr[i];
+            oldestTimestamp = item.timestamp;
+
+
+            let chatMessage = document.createElement('div');
+            chatMessage.className = 'chat-message';
+
+            // Create user message and add user photo
+            const userMessage = document.createElement("div");
+            userMessage.className = "prompt-div";
+
+            const userPhoto = document.createElement("img");
+            userPhoto.src = "https://cdn3.iconfinder.com/data/icons/glypho-generic-icons/64/user-man-circle-invert-512.png"; // Replace with the URL of the user's photo
+            userPhoto.alt = "User Photo";
+            userPhoto.className = "u-photo";
+            userMessage.appendChild(userPhoto);
+
+            const userText = document.createElement("div");
+
+            userText.textContent = item.input;
+            userText.className = "u-txt";
+            userMessage.appendChild(userText);
+
+            chatMessage.appendChild(userMessage);
+
+            // Create assistant message and add chatbot photo
+            const assistantMessage = document.createElement("div");
+            assistantMessage.className = "response-div";
+
+            const assistantPhoto = document.createElement("img");
+            assistantPhoto.src = "images/logo.png"; // Replace with the URL of the chatbot's photo
+            assistantPhoto.alt = "Chatbot Photo";
+            assistantPhoto.className = "a-photo";
+
+            assistantMessage.appendChild(assistantPhoto);
+
+            // const assistantText = document.createElement("div");
+            // assistantText.className = "assistant-text";
+            let bodyy = item.output;
+            const bodyArray = JSON.parse(bodyy.data.body);
+            //  display_data.textContent=bodyArray["title"];
+            //  alert()
+            // console.log(bodyArray[0]);
+            // Iterate through the array to access titles, URLs, and other properties
+            console.log(bodyArray)
+            for (let i = 0; i < bodyArray.length; i++) {
+                let item = bodyArray[i];
+                const title = item.title;
+                // console.log(title);
+                const url = item.url;
+                const value = item.value;
+                const stars = item.stars;
+                const thumbnailImage = item.thumbnailImage;
+                const reviewsCount = item.reviewsCount;
+                error_text_div = document.createElement("div");
+                error_text_div.className = "response-div";
+                var block_product = document.createElement("a");
+                block_product.href = url;
+                block_product.className = "product-card";
+                block_product.target = "_blank";
+
+                //add image to block
+                var img_product = document.createElement("img");
+                img_product.className = "product-image";
+                img_product.src = thumbnailImage;
+                img_product.alt = "Product-Image";
+                //create one more div
+                var div_product = document.createElement("div");
+                div_product.className = "product-details";
+                //create h3
+                var product_title = document.createElement("h3");
+                product_title.className = "product-title";
+                product_title.textContent = title;
+                div_product.appendChild(product_title);
+                //create value para
+                var value_para = document.createElement("p");
+                value_para.className = "product-value";
+                value_para.textContent = "Value: $" + value;
+                div_product.appendChild(value_para);
+                //create rating para
+                var rating_para = document.createElement("p");
+                rating_para.className = "product-rating";
+                rating_para.textContent = "Rating: " + stars;
+                div_product.appendChild(rating_para);
+                //create reviews count para
+                var review_para = document.createElement("p");
+                review_para.className = "product-reviews";
+                review_para.textContent = "Reviews: " + reviewsCount;
+                div_product.appendChild(review_para);
+                block_product.appendChild(img_product);
+                block_product.appendChild(div_product);
+                error_text_div.appendChild(block_product);
+
+                assistantMessage.appendChild(error_text_div);
+
+                chatMessage.appendChild(assistantMessage);
+
+                display_div.insertBefore(chatMessage, display_div.firstChild);
+            }
+        }
+
+
+
+
+    };
+    function loadMoreMessages() {
+        if (isLoading) {
+            return;
+        }
+        isLoading = true;
+
+        // Find the timestamp of the latest element loaded
+        // console.log(oldestTimestamp);
+        console.log(oldestTimestamp);
+        read(oldestTimestamp, userid) // Adjust 'userID' as needed
+            .then(() => {
+                isLoading = false;
+            });
+
+    }
+    loadMoreMessages();
+    let flag = false;
+    let lowerCasestring;
+    const background_div = document.getElementById("background");
+
+    function displayErrorText() {
+
+
+        asstMsg = "Sorry, there was a problem from our end. Please give the prompt again.";
+        alert(asstMsg);
+
+    };
+    function displayProductText() {
+
+        asstMsg = "Please search for a product";
+        alert(asstMsg);
+
+    };
+    let inputValue;
+    let contentWithoutQuotes;
+    let scrape_response = [];
+
+    const loadingOverlay = document.getElementById("loading-overlay");
+    // var image=document.getElementById("product-image");
+    const log_out = document.getElementById("logOut");
+    log_out.onclick = function () {
+        //   const user = userPool.getCurrentUser();
+        // alert(user);
+        // if (user) {
+        //   user.signOut();
+        // }
+        window.location.href = "https://strawhats.auth.us-east-1.amazoncognito.com/logout?client_id=7bg7tgmqu74o8l3gjfkf7u09t8&logout_uri=http%3A%2F%2Flocalhost%3A5500%2Findex.html";
+    }
+    // image.src="https://m.media-amazon.com/images/I/61Iyy+2damL._AC_SX300_SY300_.jpg";
+    // image.style="width:100px";
+    const inputElement = document.getElementById("input-prompt");
+    const inputForm = document.getElementById("input-form");
+    function readFileAsync(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                const imageDataUrl = event.target.result;
+                resolve(imageDataUrl);
+            };
+
+            reader.onerror = (error) => {
+                reject(error);
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    let isFirstClick = true;
+    var display_data = document.getElementById("displayData");
+    inputElement.addEventListener("click", function () {
+        if (inputElement.value === inputElement.value) {
+            if (isFirstClick) {
+                // Clear the input value if it's equal to the placeholder text
+                inputElement.value = "";
+                isFirstClick = false;
+            }
+        }
+    });
+    inputForm.addEventListener("submit", async function (event) {
+        event.preventDefault(); // Prevent the form from submitting and refreshing the page
+        // Get the uploaded image file
+        let fileInput = document.getElementById("file-input");
+        let imageFile = fileInput.files[0];
+        if (imageFile) {
+            flag = true;
+            let imagedetect;
+            if (!imageFile) {
+                display_data.textContent = "Please upload an image.";
+                return;
+            }
+            try {
+                let imageDataUrl = await readFileAsync(imageFile);
+                console.log("File loaded successfully:", imageDataUrl);
+                const dataToSend = {
+                    image_url: imageDataUrl,  // Include the data URL in the request body
+                };
+
+                // Replace 'https://your-api-url.com' with the actual URL of your API
+                const apiUrl = 'https://za5ye2swsym4c6emfxy3hbexba0wolhr.lambda-url.us-east-1.on.aws/';
+                await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(dataToSend),
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json(); // Parse the response data
+                        } else {
+                            throw new Error('Failed to receive a valid response from the server.');
+                        }
+                    })
+                    .then(result => {
+                        // Handle the response from the server
+                        imagedetect = result;
+                        contentWithoutQuotes = result.join("").replace(/ /g, "+");
+                        result = result.join("").replace(',', "+");
+                        console.log(contentWithoutQuotes);
+                        userMsg = result;
+
+                        lowerCasestring = contentWithoutQuotes.toLowerCase();
+                        console.log(lowerCasestring);
+
+                        // display_data.textContent = "Request successful!";
+                    })
+                    .catch(error => {
+                        // Handle errors
+                        console.error('Error while making the request:', error);
+                        displayErrorText();
+                        loadingOverlay.style.display = "none";
+                    });
+                // Proceed with your code that depends on imageDataUrl here
+            } catch (error) {
+                console.error("Error reading the file:", error);
+            }
+            fileInput.innerHTML = null;
+            imageFile = null;
+            imageDataUrl = null;
+            // // Read the selected image and convert it to a data URL
+            // const reader = new FileReader();
+            // reader.onload = async function(event) {
+            //     const imageDataUrl = event.target.result;
+
+            //     inputValue = inputElement.value;
+            //     inputElement.value = "";
+
+
+            // };
+            // reader.readAsDataURL(imageFile);
+            loadingOverlay.style.display = "block";
+
+        }
+        // Get the input value and store it in the global variable
+        else {
+            inputValue = inputElement.value;
+            inputElement.value = "";
+            const apiUrl = 'https://p3meugjzsy5ca7xnikh4ongxgy0binjn.lambda-url.us-east-1.on.aws/';
+            const requestBody = {
+                prompt: inputValue
+            };
+            userMsg = inputValue;
+            loadingOverlay.style.display = "block";
+            // Define custom headers
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+
+            // Make the POST request using Axios
+            await axios.post(apiUrl, requestBody, { headers: headers })
+                .then(response => {
+                    // Handle the response data
+                    const content = JSON.stringify(response.data.message.content, null, 2);
+                    contentWithoutQuotes = content.replace(/"/g, '');
+                    contentWithoutQuotes = contentWithoutQuotes.replace(/ /g, '+');
+                    lowerCasestring = contentWithoutQuotes.toLowerCase();
+                    console.log(contentWithoutQuotes);
+                })
+                .catch(error => {
+                    // Handle errors
+                    console.error('There was a problem with the request:', error);
+                    loadingOverlay.style.display = "none";
+                    alert("Alert Occurred,please give the prompt again");
+                    displayErrorText();
+
+                });
+        }
+
+        if (lowerCasestring === "no" || lowerCasestring === "undefined") {
+            displayProductText();
+        }
+        else {
+            console.log("going to apify");
+            console.log(contentWithoutQuotes);
+
+            const urlsearch = `https://www.amazon.com/s?k=${contentWithoutQuotes}`;
+            const options = {
+                method: 'POST',
+                url: 'https://api.apify.com/v2/acts/junglee~free-amazon-product-scraper/run-sync-get-dataset-items',
+                params: { token: 'apify_api_pFkzIF5lmkWaSkrLnhO8gE9U1PI34I1PCuq3' },
+                headers: { 'content-type': 'application/json' },
+                data: {
+                    categoryUrls: [{ url: urlsearch }],
+                    maxItems: 10,
+                    detailedInformation: false,
+                    useCaptchaSolver: false,
+                    proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] }
+                }
+            };
+
+            try {
+                const { data } = await axios.request(options);
+                //   scrape_response=data;
+                //   const responseJSON = JSON.stringify(scrape_response);
+                //   display_data.textContent=responseJSON;
+                //   console.log(responseJSON);
+                console.log(data);
+                scrape_response = data;
+                if (!inputValue) {
+                    inputValue = "I want highly rated products";
+                }
+                let data_to_append = {
+                    'userprompt': inputValue
+                };
+                scrape_response.push(data_to_append);
+                const options_recommendation = {
+                    method: 'POST',
+                    // NGROK URL 
+                    url: 'https://fa32-103-37-201-178.ngrok-free.app/',
+                    headers: { 'content-type': 'application/json' },
+                    data: JSON.stringify(scrape_response)
+                };
+
+                try {
+                    await axios.request(options_recommendation)
+                        .then(response => {
+                            loadingOverlay.style.display = "none";
+                            write(userMsg, userid, Date.now(), response);
+                            let chatMessage = document.createElement('div');
+                            chatMessage.className = 'chat-message';
+
+                            // Create user message and add user photo
+                            const userMessage = document.createElement("div");
+                            userMessage.className = "prompt-div";
+
+                            const userPhoto = document.createElement("img");
+                            userPhoto.src = "https://cdn3.iconfinder.com/data/icons/glypho-generic-icons/64/user-man-circle-invert-512.png"; // Replace with the URL of the user's photo
+                            userPhoto.alt = "User Photo";
+                            userPhoto.className = "u-photo";
+                            userMessage.appendChild(userPhoto);
+
+                            const userText = document.createElement("div");
+
+                            userText.textContent = userMsg;
+                            userText.className = "u-txt";
+                            userMessage.appendChild(userText);
+
+                            chatMessage.appendChild(userMessage);
+                            console.log('Data received from the server:', response.data);
+                            error_text_div = document.createElement("div");
+                            error_text_div.className = "response-div";
+                            const bodyArray = JSON.parse(response.data.body);
+                            const assistantMessage = document.createElement("div");
+                            assistantMessage.className = "assistant-msg";
+
+                            const assistantPhoto = document.createElement("img");
+                            assistantPhoto.src = "images/logo.png"; // Replace with the URL of the chatbot's photo
+                            assistantPhoto.alt = "Chatbot Photo";
+                            assistantPhoto.className = "a-photo";
+
+                            assistantMessage.appendChild(assistantPhoto);
+
+                            //  display_data.textContent=bodyArray["title"];
+                            //  alert()
+                            // console.log(bodyArray[0]);
+                            // Iterate through the array to access titles, URLs, and other properties
+                            console.log(bodyArray)
+                            for (let i = 0; i < bodyArray.length; i++) {
+                                let item = bodyArray[i];
+                                const title = item.title;
+                                // console.log(title);
+                                const url = item.url;
+                                const value = item.value;
+                                const stars = item.stars;
+                                const thumbnailImage = item.thumbnailImage;
+                                const reviewsCount = item.reviewsCount;
+                                var block_product = document.createElement("a");
+                                block_product.href = url;
+                                block_product.className = "product-card";
+                                block_product.target = "_blank";
+
+                                //add image to block
+                                var img_product = document.createElement("img");
+                                img_product.className = "product-image";
+                                img_product.src = thumbnailImage;
+                                img_product.alt = "Product-Image";
+                                //create one more div
+                                var div_product = document.createElement("div");
+                                div_product.className = "product-details";
+                                //create h3
+                                var product_title = document.createElement("h3");
+                                product_title.className = "product-title";
+                                product_title.textContent = title;
+                                div_product.appendChild(product_title);
+                                //create value para
+                                var value_para = document.createElement("p");
+                                value_para.className = "product-value";
+                                value_para.textContent = "Value: $" + value;
+                                div_product.appendChild(value_para);
+                                //create rating para
+                                var rating_para = document.createElement("p");
+                                rating_para.className = "product-rating";
+                                rating_para.textContent = "Rating: " + stars;
+                                div_product.appendChild(rating_para);
+                                //create reviews count para
+                                var review_para = document.createElement("p");
+                                review_para.className = "product-reviews";
+                                review_para.textContent = "Reviews: " + reviewsCount;
+                                div_product.appendChild(review_para);
+                                block_product.appendChild(img_product);
+                                block_product.appendChild(div_product);
+                                error_text_div.appendChild(block_product);
+                                assistantMessage.appendChild(error_text_div);
+                                chatMessage.appendChild(assistantMessage);
+                                display_div.appendChild(chatMessage);
+
+                            }
+                            // error_text_div.textContent=JSON.stringify(response.data);
+                            // display_div.appendChild(error_text_div);
+                            // for(let i=0;i<5;i++){
+                            //   var block_product=document.createElement("a");
+                            //   block_product.href=response.da.title[i];
+                            //   error_text_div.appendChild(block_product);
+                            // }
+                            // display_div.appendChild(error_text_div);
+                            //  var btn_img=document.getElementById("button-image");
+                            // btn_img.value="";
+                        })
+                        .catch(error => {
+                            console.error('Error while making the request:', error);
+                            loadingOverlay.style.display = "none";
+                            alert("Error Occurred,please give the prompt again");
+                            displayErrorText();
+                        });
+
+                } catch (error) {
+                    console.error(error);
+                    loadingOverlay.style.display = "none";
+                    alert("Alert Occurred,please give the prompt again");
+                    displayErrorText();
+                }
+            } catch (error) {
+                console.error(error);
+                loadingOverlay.style.display = "none";
+                alert("Alert Occurred,please give the prompt again");
+                displayErrorText();
+            }
+
+        }
+        // const recommendation_url="https://da62-103-37-201-178.ngrok-free.app/";
+        // const recommendation_options={
+        //     method:'POST',
+        //     url: recommendation_url,
+        //     headers: {'content-type': 'application/json'},
+        //     data:
+
+        // };
+
+        inputForm.reset();
+
+    }
+
+    );
+
+    display_div.addEventListener('scroll', function () {
+        if (display_div.scrollTop < scrollYPos) {
+            if (hasmore) {
+                loadMoreMessages();
+            }
+        }
+        scrollYPos = display_div.scrollTop;
+    });
+
+    // var button_image = document.getElementById("button_image");
+    // button_image.value = "";
+</script>
+
+</html>
