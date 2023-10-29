@@ -1,6 +1,6 @@
 # StrawHats: Amazon Chatbot
 ## Submission Link
-https://www.youtube.com/watch?v=4pmDuu2rqbI&ab_channel=AnuragWadhwa
+[https://www.youtube.com/watch?v=4pmDuu2rqbI&ab_channel=AnuragWadhwa](https://www.youtube.com/watch?v=WhX1xFs3n4U)
 ## Basic Idea
 
 Our solution enhances user shopping experiences and satisfaction by allowing natural language prompts for product discovery. The chatbot features product recommendations based on user preferences and image-to-product searches. Users can ask for recommendations like "I want a laptop under 40,000 Rupees with at least 8GB RAM and 1TB storage," and the chatbot provides real-time Amazon product suggestions. Additionally, users can input images to receive related product recommendations. All suggestions are based on real-time Amazon data obtained through Apify's API service (will be replaced by Amazon API in the future).
