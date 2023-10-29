@@ -459,8 +459,8 @@
             const urlsearch = `https://www.amazon.com/s?k=${contentWithoutQuotes}`;
             const options = {
                 method: 'POST',
-                url: 'https://api.apify.com/v2/acts/junglee~free-amazon-product-scraper/run-sync-get-dataset-items',
-                params: { token: 'apify_api_pFkzIF5lmkWaSkrLnhO8gE9U1PI34I1PCuq3' },
+                url: 'https://api.apify.com/v2/acts/junglee~amazon-crawler/run-sync-get-dataset-items?token=apify_api_hgLPvjkb8z8wDwNB6ecZ7hbg6oXHHP0n7vWw',
+                
                 headers: { 'content-type': 'application/json' },
                 data: {
                     categoryUrls: [{ url: urlsearch }],
